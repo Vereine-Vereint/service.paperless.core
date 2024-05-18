@@ -21,11 +21,10 @@ set +o allexport
 
 # COMMANDS
 
-# This is an example command that prints a message from the first argument
-# commands+=([example]="<msg>:Example command that prints <msg>")
-# cmd_example() {
-#   echo "Example: $1"
-# }
+commands+=([createsuperuser]=":Creates a superuser for the Paperless instance")
+cmd_createsuperuser() {
+  docker compose run --rm webserver createsuperuser
+}
 
 # ATTACHMENTS
 

@@ -1,4 +1,4 @@
-# service.template
+# service.paperless
 
 service for TEMPLATE
 
