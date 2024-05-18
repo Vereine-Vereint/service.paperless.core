@@ -1,5 +1,5 @@
 #!/bin/bash
-SERVICE_NAME="lowercaseservicename"
+SERVICE_NAME="paperless"
 SERVICE_VERSION="v0.1"
 
 set -e

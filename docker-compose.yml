@@ -4,26 +4,69 @@ networks:
     external: true
 
 services:
-  example:
-    image: whoami
+  broker:
+    image: docker.io/library/redis:7
     restart: unless-stopped
-    # ports:
-    #   - 80:80 # Port of service
     volumes:
-    # use generated folder for generated templates
-    - ./generated/example:/example:ro # generated template "named example"
-    # use volumes folder for data persistance
-    - ./volumes/test:/test # volume "test" for service
-    env_file:
-    - ../${ENV_FILE} # load selected environment file
+      - ./volumes/redis:/data
 
+  db:
+    image: docker.io/library/postgres:16
+    restart: unless-stopped
+    volumes:
+      - ./volumes/pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    volumes:
+      - ./volumes/data:/usr/src/paperless/data
+      - ./volumes/media:/usr/src/paperless/media
+      - ./volumes/export:/usr/src/paperless/export
+      - ./volumes/consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+
+      PAPERLESS_URL: https://${PAPERLESS_DOMAIN}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_TIME_ZONE: ${TIME_ZONE}
+      PAPERLESS_OCR_LANGUAGE: ${PAPERLESS_LANGUAGE}
+
+    depends_on:
+      - db
+      - broker
+      - gotenberg
+      - tika
+    # ports:
+    #   - "8000:8000"
     networks:
-    - traefik # add to traefik network
-    - default # add to default (stack internal) network
+    - traefik
+    - default
 
-    # add labels to connect to traefik
     labels:
       - "traefik.enable=true"
-      # replace EXAMPLE with your service name
-      - "traefik.http.routers.EXAMPLE.rule=Host(`${EXAMPLE_DOMAIN}`)"
-      - "traefik.http.routers.EXAMPLE.entrypoints=websecure"
+      - "traefik.http.routers.paperless.rule=Host(`${PAPERLESS_DOMAIN}`)"
+      - "traefik.http.routers.paperless.entrypoints=websecure"
+
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:7.10
+    restart: unless-stopped
+
+    # The gotenberg chromium route is used to convert .eml files. We do not
+    # want to allow external content like tracking pixels or even javascript.
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+
+  tika:
+    image: ghcr.io/paperless-ngx/tika:latest
+    restart: unless-stopped
