@@ -10,8 +10,6 @@ cd $SERVICE_DIR
 
 # CORE
 source ./core/core.sh
-# BORG
-source ./borg/borg.sh
 
 
 # VARIABLES
